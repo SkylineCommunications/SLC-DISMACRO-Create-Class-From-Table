@@ -270,31 +270,33 @@ public class Script
 			{
 				text.AppendLine("public void SaveToProtocol(SLProtocol protocol, bool partial = false)");
 				text.OpenCurlyBraces();
-
+			
 				text.AppendLine("// Calculate the batch size, recommended 25000 cells max per fill array, divided by the number of columns.");
 				text.AppendLine($"var batchSize = 25000 / {descParameters.Count};");
 				text.AppendLine();
-				text.AppendLine("// If full then the first batch needs to be a SaveOption.Full.");
-				text.AppendLine("var first = !partial;");
-				text.AppendLine("if (!Rows.Any() && !partial)");
+				text.AppendLine("// When full updating and the Rows are empty, clear the table.");
+				text.AppendLine($"if (!Rows.Any() && !partial)");
 				text.OpenCurlyBraces();
 				text.AppendLine("protocol.ClearAllKeys(Parameter." + tableName.ToLower().FirstLetterToUpper() + ".tablePid);");
 				text.AppendLine("return;");
 				text.CloseCurlyBraces();
 				text.AppendLine();
+				text.AppendLine("// If full then the first batch needs to be a SaveOption.Full.");
+				text.AppendLine("var first = !partial;");
 				text.AppendLine("foreach (var batch in Rows.Select(x => x.ToProtocolRow()).Batch(batchSize))");
 				text.OpenCurlyBraces();
-
+			
 				text.AppendLine("if (first)");
 				text.OpenCurlyBraces();
 				text.AppendLine($"protocol.FillArray(Parameter." + tableName.ToLower().FirstLetterToUpper() + ".tablePid, batch.ToList(), NotifyProtocol.SaveOption.Full);");
+				text.AppendLine($"first = false;");
 				text.CloseCurlyBraces();
-
+			
 				text.AppendLine("else");
 				text.OpenCurlyBraces();
 				text.AppendLine($"protocol.FillArray(Parameter." + tableName.ToLower().FirstLetterToUpper() + ".tablePid, batch.ToList(), NotifyProtocol.SaveOption.Partial);");
 				text.CloseCurlyBraces();
-
+			
 				text.CloseCurlyBraces();
 				text.CloseCurlyBraces();
 			}
