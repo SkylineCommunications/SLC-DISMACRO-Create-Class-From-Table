@@ -30,6 +30,8 @@ public class Script
 
 		string tableDescription = String.Empty;
 
+		int pkIndex = -1;
+
 		bool isSNMP = false;
 
 		TabbedStringBuilder text = new TabbedStringBuilder();
@@ -52,6 +54,8 @@ public class Script
 				{
 					isSNMP = true;
 				}
+
+				pkIndex = Convert.ToInt32(xParamTag.Element("ArrayOptions").Attribute("index").Value);
 			}
 			else
 			{
@@ -282,28 +286,27 @@ public class Script
 				text.CloseCurlyBraces();
 				text.AppendLine();
 				text.AppendLine("// If full then the first batch needs to be a SaveOption.Full.");
-				text.AppendLine("var first = !partial;");
-				text.AppendLine("foreach (var batch in Rows.Select(x => x.ToProtocolRow()).Batch(batchSize))");
+
+				text.AppendLine($"var rowObjectArray = Rows.Select(x => x.ToProtocolRow());");
+				text.AppendLine("foreach (var batch in rowObjectArray.Batch(batchSize))");
 				text.OpenCurlyBraces();
-			
-				text.AppendLine("if (first)");
-				text.OpenCurlyBraces();
-				text.AppendLine($"protocol.FillArray(Parameter." + tableName.ToLower().FirstLetterToUpper() + ".tablePid, batch.ToList(), NotifyProtocol.SaveOption.Full);");
-				text.AppendLine($"first = false;");
-				text.CloseCurlyBraces();
-			
-				text.AppendLine("else");
-				text.OpenCurlyBraces();
+
 				text.AppendLine($"protocol.FillArray(Parameter." + tableName.ToLower().FirstLetterToUpper() + ".tablePid, batch.ToList(), NotifyProtocol.SaveOption.Partial);");
+
 				text.CloseCurlyBraces();
-			
-				text.CloseCurlyBraces();
+				text.AppendLine();
+				text.AppendLine($"var keys = protocol.GetKeys(Parameter." + tableName.ToLower().FirstLetterToUpper() + ".tablePid);");
+				text.AppendLine($"var updatedKeys = rowObjectArray.Select(x => Convert.ToString(x[{pkIndex}]));");
+				text.AppendLine($"protocol.DeleteRow(Parameter." + tableName.ToLower().FirstLetterToUpper() + ".tablePid,keys.Except(updatedKeys).ToArray());");
+
 				text.CloseCurlyBraces();
 			}
+
 			#endregion
 
 			text.CloseCurlyBraces();
 			text.CloseCurlyBraces();
+
 			#endregion
 
 			Clipboard.SetText(text.ToString());
@@ -316,6 +319,8 @@ public class Script
 		{
 			engine.LogToOutputWindow("Could not find any correctly defined Discreet in the selected input text.");
 		}
+
+		engine.LogToOutputWindow("Classes have been placed in the clipboard.");
 	}
 
 	private static void AddConstructorRecord(List<string> idxParameters, Dictionary<string, ParamOptions> descParameters, string tableName, string tableDescription, TabbedStringBuilder text)
